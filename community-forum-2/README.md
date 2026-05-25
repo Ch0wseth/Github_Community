@@ -203,6 +203,17 @@ notification-service/
 | **`#file:nom`** pour inclure un fichier précis | Donne le contexte exact sans bruit |
 | **`@workspace`** pour le projet entier | Quand Copilot doit comprendre la big picture |
 
+### Comment ça marche (la fenêtre de contexte)
+
+La **fenêtre de contexte** = la "mémoire" de Copilot pour une conversation. Elle est composée de :
+- Les instructions système (copilot-instructions.md)
+- Vos messages (prompts)
+- Les réponses de Copilot
+- Les fichiers référencés
+
+> ⚠️ **Cette fenêtre est limitée** (en tokens). Quand elle est pleine, les anciens messages sont tronqués ou oubliés.
+> C'est pour ça qu'une longue conversation dégrade les réponses.
+
 ### Manipulation dans VS Code :
 - **+** en haut du chat → nouvelle conversation
 - Taper `#file:` → autocomplétion des fichiers du projet
@@ -211,6 +222,16 @@ notification-service/
 ### 💡 Piège n°1 des débutants
 > Une conversation qui traîne pendant 50 messages → contexte pollué → Copilot se contredit → tokens explosent.
 > **Nouvelle tâche = nouvelle conversation. C'est gratuit.**
+
+### 📚 Sources officielles
+
+| Sujet | Lien |
+|-------|------|
+| Concepts de contexte | [docs.github.com/en/copilot/concepts/context](https://docs.github.com/en/copilot/concepts/context) |
+| Prompt engineering | [docs.github.com/.../prompt-engineering](https://docs.github.com/en/copilot/concepts/prompting/prompt-engineering) |
+| Best practices | [docs.github.com/.../best-practices](https://docs.github.com/en/copilot/get-started/best-practices) |
+| Custom instructions | [docs.github.com/.../response-customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization) |
+| Prompt files | [docs.github.com/.../prompt-files](https://docs.github.com/en/copilot/tutorials/customization-library/prompt-files) |
 
 ---
 
