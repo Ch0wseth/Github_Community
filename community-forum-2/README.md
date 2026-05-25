@@ -47,6 +47,10 @@ gh --version      # (optionnel) Doit afficher gh version 2.x
 
 ## 📁 Étape 1.0 : Préparer le dossier
 
+> ⚠️ **Important** : on travaille dans un dossier VIDE, séparé du repo community-forum-2.
+> Le repo community-forum-2 = le matériel (slides, README).
+> Le dossier notification-service = le projet qu'on crée en live.
+
 ```bash
 mkdir notification-service
 cd notification-service
@@ -63,18 +67,32 @@ Chaque modèle a des forces différentes. Choisir le bon = meilleur résultat + 
 ### Comment faire
 Dans le chat Copilot → cliquer sur le **sélecteur de modèle** (en bas du chat).
 
-### Grille de décision
+### Le mode "Auto" (par défaut)
+
+Par défaut, Copilot est en mode **Auto** — il choisit le modèle tout seul en fonction de votre demande :
+- Question simple → il prend un modèle rapide/léger
+- Demande complexe → il prend un modèle plus puissant
+
+> 💡 **Pour les débutants** : restez en Auto, c'est très bien. Copilot route automatiquement.
+>
+> **Pour aller plus loin** : sélectionnez manuellement un modèle quand vous savez ce que vous voulez (voir grille ci-dessous).
+
+### Grille de décision (sélection manuelle)
 
 | Tâche | Modèle recommandé | Pourquoi |
 |-------|-------------------|----------|
+| Usage général | **Auto** | Copilot choisit pour vous, bon compromis |
 | Créer un projet complet | **Claude Sonnet** | Bon équilibre qualité/vitesse |
 | Petit fix rapide | **Claude Haiku** | Rapide, pas cher, suffisant |
 | Refacto complexe multi-fichier | **Claude Opus / GPT-4.1** | Raisonnement profond |
 | Analyser un gros fichier | **Gemini** | Grande fenêtre de contexte |
 
 ### 💡 Règle simple
-> Commencer léger (Sonnet), monter en puissance SI le résultat n'est pas bon.
-> Pour cette démo, on reste sur **Sonnet**.
+> - **Débutant** → restez en Auto
+> - **Intermédiaire** → Sonnet pour la création, Haiku pour les fixes
+> - **Avancé** → choisissez selon la tâche (voir grille)
+>
+> Pour cette démo, on sélectionne **Claude Sonnet** manuellement pour montrer le processus.
 
 ---
 

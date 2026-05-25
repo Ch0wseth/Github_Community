@@ -55,19 +55,31 @@
 ### Montrer dans VS Code :
 - Ouvrir le chat Copilot → cliquer sur le sélecteur de modèle (en bas)
 - Montrer les options disponibles
+- **Montrer le mode "Auto"** (sélectionné par défaut)
+
+### 💬 Expliquer le mode Auto :
+> "Par défaut Copilot est en mode **Auto** — il route automatiquement
+> vers le meilleur modèle selon votre demande.
+> Question simple → modèle rapide. Demande complexe → modèle puissant.
+>
+> Pour un débutant, Auto c'est très bien. Vous n'avez rien à faire.
+> Mais quand on maîtrise, on peut choisir manuellement."
 
 ### Grille de décision (afficher la slide) :
 
 | Tâche | Modèle recommandé | Pourquoi |
 |-------|-------------------|----------|
+| Usage général | **Auto** | Copilot choisit pour vous |
 | Créer un projet complet | **Claude Sonnet** | Bon équilibre qualité/vitesse, comprend l'archi |
 | Petit fix rapide | **Claude Haiku** | Rapide, pas cher, suffisant |
 | Refacto complexe multi-fichier | **Claude Opus / GPT-4.1** | Raisonnement profond nécessaire |
 | Analyser un gros fichier | **Gemini** | Grande fenêtre de contexte |
 
 ### 💬 Message clé :
-> "Aujourd'hui on utilise **Sonnet** pour la création. C'est le couteau suisse.
-> Règle simple : commencer léger, monter en puissance SI le résultat n'est pas bon."
+> "Aujourd'hui on sélectionne **Sonnet** manuellement pour la démo.
+> Mais retenez : Auto est un très bon défaut si vous débutez.
+> Règle simple : commencer par Auto, passer en manuel quand vous sentez
+> que le résultat n'est pas au niveau."
 
 ---
 
