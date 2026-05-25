@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Consumption — Live Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 40px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #fff;
+        }
+        .header .badge {
+            background: #e94560;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .chart-container {
+            grid-column: 1 / -1;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+        }
+        .chart-container h2 {
+            color: #e94560;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            grid-column: 1 / -1;
+        }
+        .metric-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .metric-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #e94560;
+        }
+        .metric-card .label {
+            font-size: 12px;
+            color: #a8b2d1;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+        .metric-card.blue .value { color: #4facfe; }
+        .metric-card.green .value { color: #2ed573; }
+        .metric-card.yellow .value { color: #ffc107; }
+        .steps-panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+        }
+        .steps-panel h2 {
+            color: #4facfe;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .step:hover { background: rgba(255,255,255,0.05); }
+        .step.active { background: rgba(233,69,96,0.1); border-color: #e94560; }
+        .step.done { opacity: 0.6; }
+        .step .num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(233,69,96,0.2);
+            border: 2px solid #e94560;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step.done .num { background: #2ed573; border-color: #2ed573; }
+        .step .info { flex: 1; }
+        .step .info .name { font-size: 14px; font-weight: 600; }
+        .step .info .tokens { font-size: 11px; color: #a8b2d1; }
+        .step .cost { font-size: 12px; color: #ffc107; font-weight: 600; }
+        .breakdown-panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+        }
+        .breakdown-panel h2 {
+            color: #2ed573;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .bar-row .bar-label {
+            width: 100px;
+            font-size: 12px;
+            color: #a8b2d1;
+            text-align: right;
+        }
+        .bar-row .bar-track {
+            flex: 1;
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-row .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .bar-row .bar-fill.input { background: linear-gradient(90deg, #e94560, #ff6b6b); }
+        .bar-row .bar-fill.output { background: linear-gradient(90deg, #4facfe, #43e97b); }
+        .bar-row .bar-value {
+            width: 70px;
+            font-size: 12px;
+            color: #fff;
+            text-align: right;
+        }
+        .controls {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #e94560; color: white; }
+        .btn-primary:hover { background: #ff6b6b; transform: scale(1.05); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: #a8b2d1; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .btn-reset { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); }
+        .btn-reset:hover { background: rgba(255,107,107,0.25); }
+        .comparison {
+            grid-column: 1 / -1;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            display: none;
+        }
+        .comparison.visible { display: block; }
+        .comparison h2 { color: #ffc107; font-size: 18px; margin-bottom: 20px; }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .comparison-col { text-align: center; }
+        .comparison-col h3 { font-size: 14px; color: #a8b2d1; margin-bottom: 12px; }
+        .comparison-col .big-num { font-size: 42px; font-weight: 700; }
+        .comparison-col .big-num.red { color: #ff6b6b; }
+        .comparison-col .big-num.green { color: #2ed573; }
+        .savings { 
+            text-align: center; 
+            margin-top: 20px; 
+            padding: 16px;
+            background: rgba(46,213,115,0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(46,213,115,0.3);
+        }
+        .savings .number { font-size: 36px; font-weight: 700; color: #2ed573; }
+        .savings .label { font-size: 13px; color: #a8b2d1; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Token Consumption — Live Tracker</h1>
+        <span class="badge">Community Forum #2</span>
+    </div>
+
+    <div class="dashboard">
+        <!-- Metrics cards -->
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="value" id="total-tokens">0</div>
+                <div class="label">Total Tokens</div>
+            </div>
+            <div class="metric-card blue">
+                <div class="value" id="input-tokens">0</div>
+                <div class="label">Input (Prompt)</div>
+            </div>
+            <div class="metric-card green">
+                <div class="value" id="output-tokens">0</div>
+                <div class="label">Output (Generated)</div>
+            </div>
+            <div class="metric-card yellow">
+                <div class="value" id="est-cost">$0.000</div>
+                <div class="label">Est. Cost (Sonnet)</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+            <h2>📈 Token Consumption Over Steps</h2>
+            <div class="canvas-wrapper">
+                <canvas id="tokenChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Steps panel -->
+        <div class="steps-panel">
+            <h2>🛠️ Demo Steps</h2>
+            <div id="steps-list"></div>
+        </div>
+
+        <!-- Breakdown -->
+        <div class="breakdown-panel">
+            <h2>📊 Per-Step Breakdown</h2>
+            <div class="bar-chart" id="breakdown-chart"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn btn-primary" onclick="nextStep()">▶ Next Step</button>
+            <button class="btn btn-secondary" onclick="showComparison()">📉 Show Optimized vs Not</button>
+            <button class="btn btn-reset" onclick="resetDemo()">↺ Reset</button>
+        </div>
+
+        <!-- Comparison panel -->
+        <div class="comparison" id="comparison-panel">
+            <h2>📉 With vs Without Optimization</h2>
+            <div class="comparison-grid">
+                <div class="comparison-col">
+                    <h3>❌ Without copilot-instructions.md<br>Vague prompts, long conversations</h3>
+                    <div class="big-num red" id="unopt-tokens">0</div>
+                    <div style="color:#a8b2d1; font-size:12px;">tokens used</div>
+                </div>
+                <div class="comparison-col">
+                    <h3>✅ With copilot-instructions.md<br>Precise prompts, fresh contexts</h3>
+                    <div class="big-num green" id="opt-tokens">0</div>
+                    <div style="color:#a8b2d1; font-size:12px;">tokens used</div>
+                </div>
+            </div>
+            <div class="savings">
+                <div class="number" id="savings-pct">0%</div>
+                <div class="label">Token savings with best practices</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated token data per step (realistic estimates)
+        const steps = [
+            {
+                name: "Bootstrap microservice",
+                prompt: "Create a Node.js TypeScript notification microservice...",
+                inputTokens: 320,
+                outputTokens: 2850,
+                contextTokens: 180, // from copilot-instructions.md
+                description: "Full scaffold generation"
+            },
+            {
+                name: "Add retry + dead letter",
+                prompt: "Add retry mechanism with exponential backoff...",
+                inputTokens: 280,
+                outputTokens: 1950,
+                contextTokens: 180,
+                description: "Modify existing code"
+            },
+            {
+                name: "Write tests",
+                prompt: "Write Jest + supertest tests for all scenarios...",
+                inputTokens: 250,
+                outputTokens: 2200,
+                contextTokens: 180,
+                description: "Test suite generation"
+            },
+            {
+                name: "Fix test failures",
+                prompt: "Run tests and fix any failures...",
+                inputTokens: 420,
+                outputTokens: 680,
+                contextTokens: 180,
+                description: "Agent auto-correction"
+            },
+            {
+                name: "Run & validate",
+                prompt: "Install deps, run tests, start server, send test notifications",
+                inputTokens: 150,
+                outputTokens: 350,
+                contextTokens: 180,
+                description: "Execution & verification"
+            },
+            {
+                name: "Generate .github/ structure",
+                prompt: "Create copilot-instructions.md and prompt templates...",
+                inputTokens: 200,
+                outputTokens: 890,
+                contextTokens: 0,
+                description: "Capitalization"
+            }
+        ];
+
+        // Without optimization: multiply by factor (repeated context, vague prompts, more iterations)
+        const UNOPT_FACTOR = 2.8;
+
+        let currentStep = -1;
+        let cumulativeInput = 0;
+        let cumulativeOutput = 0;
+        let chartData = { labels: ['Start'], input: [0], output: [0], total: [0] };
+
+        // Initialize
+        renderSteps();
+        renderBreakdown();
+        drawChart();
+
+        function renderSteps() {
+            const container = document.getElementById('steps-list');
+            container.innerHTML = steps.map((s, i) => `
+                <div class="step ${i <= currentStep ? (i === currentStep ? 'active' : 'done') : ''}" id="step-${i}">
+                    <div class="num">${i < currentStep ? '✓' : i + 1}</div>
+                    <div class="info">
+                        <div class="name">${s.name}</div>
+                        <div class="tokens">${i <= currentStep ? `${(s.inputTokens + s.contextTokens).toLocaleString()} in / ${s.outputTokens.toLocaleString()} out` : '—'}</div>
+                    </div>
+                    <div class="cost">${i <= currentStep ? '$' + ((s.inputTokens + s.contextTokens) * 0.003 / 1000 + s.outputTokens * 0.015 / 1000).toFixed(4) : ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderBreakdown() {
+            const container = document.getElementById('breakdown-chart');
+            const maxTokens = Math.max(...steps.map(s => s.inputTokens + s.contextTokens + s.outputTokens));
+            container.innerHTML = steps.map((s, i) => {
+                const inputW = ((s.inputTokens + s.contextTokens) / maxTokens * 100);
+                const outputW = (s.outputTokens / maxTokens * 100);
+                const active = i <= currentStep;
+                return `
+                    <div class="bar-row" style="opacity: ${active ? 1 : 0.3}">
+                        <div class="bar-label">Step ${i + 1}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill input" style="width: ${active ? inputW : 0}%"></div>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill output" style="width: ${active ? outputW : 0}%"></div>
+                        </div>
+                        <div class="bar-value">${active ? (s.inputTokens + s.contextTokens + s.outputTokens).toLocaleString() : '—'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function nextStep() {
+            if (currentStep >= steps.length - 1) return;
+            currentStep++;
+            const step = steps[currentStep];
+            
+            cumulativeInput += step.inputTokens + step.contextTokens;
+            cumulativeOutput += step.outputTokens;
+            
+            // Update metrics
+            animateNumber('total-tokens', cumulativeInput + cumulativeOutput);
+            animateNumber('input-tokens', cumulativeInput);
+            animateNumber('output-tokens', cumulativeOutput);
+            
+            const cost = cumulativeInput * 0.003 / 1000 + cumulativeOutput * 0.015 / 1000;
+            document.getElementById('est-cost').textContent = '$' + cost.toFixed(4);
+            
+            // Update chart data
+            chartData.labels.push(`Step ${currentStep + 1}`);
+            chartData.input.push(cumulativeInput);
+            chartData.output.push(cumulativeOutput);
+            chartData.total.push(cumulativeInput + cumulativeOutput);
+            
+            renderSteps();
+            renderBreakdown();
+            drawChart();
+        }
+
+        function animateNumber(id, target) {
+            const el = document.getElementById(id);
+            const start = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
+            const diff = target - start;
+            const duration = 600;
+            const startTime = performance.now();
+            
+            function tick(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.floor(start + diff * eased).toLocaleString();
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function drawChart() {
+            const canvas = document.getElementById('tokenChart');
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx.scale(2, 2);
+            
+            const w = rect.width;
+            const h = rect.height;
+            const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+            const chartW = w - padding.left - padding.right;
+            const chartH = h - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const maxVal = Math.max(...chartData.total, 1000);
+            const yScale = chartH / (maxVal * 1.1);
+            const xStep = chartData.labels.length > 1 ? chartW / (chartData.labels.length - 1) : chartW;
+            
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + chartH - (chartH * i / 5);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px Segoe UI';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(maxVal * 1.1 * i / 5).toLocaleString(), padding.left - 8, y + 4);
+            }
+            
+            // X labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px Segoe UI';
+            ctx.textAlign = 'center';
+            chartData.labels.forEach((label, i) => {
+                const x = padding.left + i * xStep;
+                ctx.fillText(label, x, h - padding.bottom + 20);
+            });
+            
+            // Draw area fills
+            function drawArea(data, color, alpha) {
+                if (data.length < 2) return;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, padding.top + chartH);
+                data.forEach((val, i) => {
+                    const x = padding.left + i * xStep;
+                    const y = padding.top + chartH - val * yScale;
+                    ctx.lineTo(x, y);
+                });
+                ctx.lineTo(padding.left + (data.length - 1) * xStep, padding.top + chartH);
+                ctx.closePath();
+                ctx.fillStyle = color.replace('1)', `${alpha})`);
+                ctx.fill();
+            }
+            
+            drawArea(chartData.total, 'rgba(233,69,96,1)', 0.1);
+            drawArea(chartData.output, 'rgba(46,213,115,1)', 0.1);
+            drawArea(chartData.input, 'rgba(79,172,254,1)', 0.15);
+            
+            // Draw lines
+            function drawLine(data, color, width) {
+                if (data.length < 2) return;
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.lineJoin = 'round';
+                data.forEach((val, i) => {
+                    const x = padding.left + i * xStep;
+                    const y = padding.top + chartH - val * yScale;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                
+                // Dots
+                data.forEach((val, i) => {
+                    const x = padding.left + i * xStep;
+                    const y = padding.top + chartH - val * yScale;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                });
+            }
+            
+            drawLine(chartData.input, '#4facfe', 2);
+            drawLine(chartData.output, '#2ed573', 2);
+            drawLine(chartData.total, '#e94560', 2.5);
+            
+            // Legend
+            const legendY = 10;
+            const legends = [
+                { label: 'Total', color: '#e94560' },
+                { label: 'Output', color: '#2ed573' },
+                { label: 'Input', color: '#4facfe' },
+            ];
+            let legendX = w - padding.right - 200;
+            legends.forEach(l => {
+                ctx.fillStyle = l.color;
+                ctx.fillRect(legendX, legendY, 12, 12);
+                ctx.fillStyle = '#a8b2d1';
+                ctx.font = '11px Segoe UI';
+                ctx.textAlign = 'left';
+                ctx.fillText(l.label, legendX + 16, legendY + 10);
+                legendX += 65;
+            });
+        }
+
+        function showComparison() {
+            const panel = document.getElementById('comparison-panel');
+            panel.classList.toggle('visible');
+            
+            if (panel.classList.contains('visible')) {
+                const optTotal = cumulativeInput + cumulativeOutput || steps.reduce((a, s) => a + s.inputTokens + s.contextTokens + s.outputTokens, 0);
+                const unoptTotal = Math.round(optTotal * UNOPT_FACTOR);
+                
+                animateNumberEl(document.getElementById('opt-tokens'), optTotal);
+                animateNumberEl(document.getElementById('unopt-tokens'), unoptTotal);
+                
+                const savings = Math.round((1 - optTotal / unoptTotal) * 100);
+                setTimeout(() => {
+                    document.getElementById('savings-pct').textContent = `-${savings}%`;
+                }, 300);
+            }
+        }
+
+        function animateNumberEl(el, target) {
+            const duration = 800;
+            const startTime = performance.now();
+            function tick(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.floor(target * eased).toLocaleString();
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function resetDemo() {
+            currentStep = -1;
+            cumulativeInput = 0;
+            cumulativeOutput = 0;
+            chartData = { labels: ['Start'], input: [0], output: [0], total: [0] };
+            
+            document.getElementById('total-tokens').textContent = '0';
+            document.getElementById('input-tokens').textContent = '0';
+            document.getElementById('output-tokens').textContent = '0';
+            document.getElementById('est-cost').textContent = '$0.000';
+            document.getElementById('comparison-panel').classList.remove('visible');
+            
+            renderSteps();
+            renderBreakdown();
+            drawChart();
+        }
+
+        // Resize handler
+        window.addEventListener('resize', drawChart);
+    </script>
+</body>
+</html>
