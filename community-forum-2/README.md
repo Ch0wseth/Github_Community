@@ -17,7 +17,6 @@
 | GitHub Copilot Chat (extension) | Dernière version | Marketplace VS Code → "GitHub Copilot Chat" |
 | Node.js | 18+ (recommandé : 20) | [nodejs.org](https://nodejs.org/) |
 | Git | Dernière version | [git-scm.com](https://git-scm.com/) |
-| GitHub CLI (optionnel) | Dernière version | [cli.github.com](https://cli.github.com/) |
 
 ### Vérification de l'installation
 
@@ -26,7 +25,6 @@ node --version    # Doit afficher v18.x ou v20.x
 npm --version     # Doit afficher 9.x ou 10.x
 git --version     # Doit afficher git version 2.x
 code --version    # Doit afficher un numéro de version
-gh --version      # (optionnel) Doit afficher gh version 2.x
 ```
 
 ### Configuration Copilot
@@ -542,26 +540,64 @@ Le concept : forcer les agents à communiquer en mode ultra-compressé.
 
 ---
 
-# PARTIE 3 : Multi-Agents — VS Code & GitHub CLI
+# PARTIE 3 : Multi-Agents dans VS Code
 
-> Plusieurs agents spécialisés collaborent sur un même projet.
-> On choisit le bon modèle pour chaque tâche.
+> Depuis VS Code 1.109 (janvier 2026), le multi-agent est **natif**.
+> Vous pouvez exécuter Copilot, Claude et Codex côte à côte, déléguer des sous-tâches,
+> et gérer toutes vos sessions depuis un seul endroit.
+>
+> 📖 Réf : [Multi-Agent Development — VS Code Blog](https://code.visualstudio.com/blogs/2026/02/05/multi-agent-development)
 
 ---
 
-## 🔀 Étape 3.1 : Workflow multi-agents dans VS Code
+## 🔀 Étape 3.1 : L'Agent Sessions View
 
 ### Le concept
 
+VS Code centralise tous vos agents dans la vue **Agent Sessions** :
+
 ```
-VOUS (le pilote)
-    │
-    ├── Agent Code (Sonnet) → Génère le code
-    ├── Agent Review (Opus) → Vérifie la qualité
-    └── Agent Fix (Sonnet)  → Applique les corrections
+┌─────────────────────────────────────┐
+│  Agent Sessions                      │
+├─────────────────────────────────────┤
+│  🟢 Local - Copilot (Sonnet)       │  ← Interactif, sur votre machine
+│  🟡 Background - Claude (Opus)     │  ← Async, worktree isolé
+│  🔵 Cloud - Codex                  │  ← Remote, crée des PRs
+│  └── Subagent: Research            │  ← Sous-tâche parallèle
+│  └── Subagent: Security scan       │  ← Sous-tâche parallèle
+└─────────────────────────────────────┘
 ```
 
-### Étape A : Générer une feature (Sonnet)
+### Les 3 modes d'exécution
+
+| Critère | Local | Background | Cloud |
+|---------|-------|-----------|-------|
+| Où ça tourne | Votre machine | Votre machine (CLI) | Infrastructure distante |
+| Interaction | Interactive | Asynchrone | Asynchrone / Autonome |
+| Visibilité équipe | Non | Non | Oui (PRs/issues) |
+| Isolation | Non (workspace direct) | Oui (worktrees) | Oui (remote) |
+
+### Quand utiliser quoi
+
+- **Local** → vous voulez piloter, itérer rapidement
+- **Background** → tâche bien définie, vous continuez à coder en parallèle
+- **Cloud** → refactoring long, feature complète, le résultat arrive en PR
+
+---
+
+## 🤖 Étape 3.2 : Utiliser Claude et Codex comme agents
+
+### Activer les agents
+
+1. Ouvrez le sélecteur de session dans le chat Copilot
+2. Choisissez votre agent : **Copilot**, **Claude**, ou **Codex**
+3. Claude utilise le harness officiel Anthropic (mêmes outils, mêmes prompts)
+
+> ⚙️ Setting : `github.copilot.chat.claudeAgent.enabled` (géré par votre organisation)
+> 
+> Pré-requis Codex local : abonnement Copilot Pro+ et [extension OpenAI Codex](https://marketplace.visualstudio.com/items?itemName=openai.chatgpt)
+
+### Exercice : Générer une feature avec Claude (local)
 
 Sélectionner **Claude Sonnet** → mode Agent :
 
@@ -571,101 +607,85 @@ de notifications et les enqueue toutes. Retourne un array de IDs.
 Validation : max 100 notifications par batch.
 ```
 
-### Étape B : Review le code (Opus)
+---
 
-**Nouvelle conversation** → sélectionner **Claude Opus** :
+## 🔀 Étape 3.3 : Subagents — orchestration automatique
+
+### Le concept
+
+Les **subagents** sont des agents isolés que votre agent principal peut lancer en parallèle.
+Le résultat remonte à la session principale, le contexte intermédiaire reste contenu.
 
 ```
-@code-reviewer Vérifie le code du endpoint /notifications/bulk.
-Vérifie sécurité, performance, et patterns d'équipe.
+Agent Principal (vous pilotez)
+    │
+    ├── 🔍 Subagent Research → cherche patterns d'auth dans le codebase
+    ├── 📖 Subagent Docs → scanne la documentation pertinente
+    └── 🔒 Subagent Security → vérifie les vulnérabilités
+    
+    ← Résultats agrégés, contexte propre
+```
+
+### Avantages
+- **Parallélisme** : plusieurs tâches en même temps
+- **Isolation** : le contexte principal reste léger
+- **Économie de tokens** : seul le résultat final remonte
+
+### Exercice : Review multi-agent avec handoffs
+
+Créez un custom agent `.github/agents/review-workflow.md` :
+
+```markdown
+---
+name: review-workflow
+description: Workflow de review automatisé
+handoffs:
+  - agent: code-reviewer
+    trigger: Code généré, prêt pour review
+  - agent: security-scanner
+    trigger: Review OK, vérification sécurité
+---
+
+Tu es un orchestrateur de review.
+Quand du code est généré, tu le passes d'abord au code-reviewer,
+puis au security-scanner. Tu résumes les findings à la fin.
+```
+
+Puis dans le chat, demandez :
+
+```
+@review-workflow Vérifie le code du endpoint /notifications/bulk.
 #file:src/routes/notifications.ts
 ```
 
-### Étape C : Appliquer les corrections (Sonnet)
-
-**Nouvelle conversation** → retour sur **Sonnet** :
-
-```
-Applique ces corrections sur src/routes/notifications.ts :
-#file:src/routes/notifications.ts
-
-1. Valider que chaque notification a un channel et un "to" non vide
-2. Limiter la taille du message à 1000 caractères
-3. Retourner 207 Multi-Status si certaines notifications sont invalides
-```
-
-### 💡 Le pattern Code → Review → Fix
-- Chaque agent a un modèle adapté à sa tâche
-- Contexte propre à chaque étape (nouvelle conversation)
-- Vous orchestrez, les agents exécutent
+→ L'agent orchestre automatiquement : review → security → résumé.
 
 ---
 
-## 💻 Étape 3.2 : GitHub Copilot dans le terminal
+## 💡 Étape 3.4 : Le pattern Code → Review → Fix (modernisé)
 
-### Pré-requis
+### Avant (orchestration manuelle)
+- Ouvrir une nouvelle conversation pour chaque étape
+- Changer manuellement le modèle
+- Copier/coller le contexte entre sessions
 
-```bash
-gh extension list
-# Doit afficher : gh-copilot
-# Sinon :
-gh extension install github/gh-copilot
-```
+### Maintenant (orchestration native)
+- **Custom agents + handoffs** pour les workflows automatiques
+- **Subagents parallèles** pour la recherche et l'analyse
+- **Agent Sessions view** pour tout superviser
+- **Cloud agents** pour les tâches longues qui génèrent des PRs
 
-### Commande 1 : Expliquer
+### 💡 Résumé
 
-```bash
-gh copilot explain "find . -name '*.ts' -exec grep -l 'deadLetter' {} \;"
-```
-
-→ Copilot explique la commande en langage humain.
-
-### Commande 2 : Suggérer
-
-```bash
-gh copilot suggest "find all TypeScript files modified in the last 24h"
-```
-
-→ Copilot génère la commande shell exacte.
-
-### Commande 3 : Debug
-
-```bash
-gh copilot suggest "check which process is using port 3000 and kill it"
-```
-
-### Commande 4 : Workflow Git
-
-```bash
-gh copilot suggest "stage only TypeScript files, commit with a message describing the retry feature, and push"
-```
-
-### 💡 Résumé `gh copilot`
-
-| Commande | Usage |
-|----------|-------|
-| `gh copilot explain "..."` | Comprendre une commande existante |
-| `gh copilot suggest "..."` | Générer une commande depuis une description |
-
-> Même intelligence que dans VS Code, mais dans le terminal. Pas besoin d'IDE.
-
-### Mention : Copilot Coding Agent
-> Pour aller plus loin : le **Coding Agent** permet d'assigner une issue GitHub directement à Copilot.
-> Il crée une branche, écrit le code, lance les tests, et ouvre une PR.
-> C'est l'avenir de l'orchestration automatique — on en reparlera quand ce sera déployé chez nous.
-
----
-
-## 📊 Étape 3.3 : Quel agent pour quoi
-
-| Besoin | Outil | Modèle | Où |
-|--------|-------|--------|-----|
-| Générer du code | Chat Agent | Sonnet | VS Code |
-| Revoir du code | Custom Agent | Opus | VS Code |
-| Commandes rapides | `gh copilot suggest` | Haiku | Terminal |
-| Expliquer | `gh copilot explain` | Haiku | Terminal |
-| Feature complète async | Coding Agent | Auto | GitHub |
-| Tests + corrections | Chat Agent itératif | Sonnet | VS Code |
+| Besoin | Outil | Mode | Agent |
+|--------|-------|------|-------|
+| Générer du code (interactif) | Chat Agent | Local | Claude Sonnet / Copilot |
+| Revoir du code | Custom Agent + handoff | Local | Claude Opus |
+| Recherche codebase | Subagent | Parallèle | Auto |
+| Scan sécurité | Subagent | Parallèle | Auto |
+| Feature complète async | Cloud Agent | Cloud | Codex / Claude |
+| Refactoring long | Background Agent | Background | Claude |
+| Tests + corrections itératifs | Chat Agent | Local | Claude Sonnet |
 
 ---
 
