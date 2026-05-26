@@ -382,7 +382,7 @@ On crée des agents spécialisés qui automatisent des tâches récurrentes.
 
 ### Agent 1 : Code Reviewer
 
-Créez `.github/agents/code-reviewer.md` :
+Créez `.github/agents/code-reviewer.agent.md` :
 
 ```markdown
 ---
@@ -412,7 +412,7 @@ Analyser le code modifié et vérifier :
 
 ### Agent 2 : API Scaffolder
 
-Créez `.github/agents/api-scaffolder.md` :
+Créez `.github/agents/api-scaffolder.agent.md` :
 
 ```markdown
 ---
@@ -710,7 +710,7 @@ Agent Principal (vous pilotez)
 
 ### Exercice : Review multi-agent avec handoffs
 
-Créez un custom agent `.github/agents/review-workflow.md` :
+Créez un custom agent `.github/agents/review-workflow.agent.md` :
 
 ```markdown
 ---
@@ -965,7 +965,7 @@ Quand NE PAS ?       Apprentissage, onboarding, exploration d'architecture
 ├── skills/
 │   └── caveman-mode/SKILL.md   ← Réponses concises automatiques
 ├── agents/
-│   └── code-reviewer.md        ← Review ciblée, pas de bavardage
+│   └── code-reviewer.agent.md        ← Review ciblée, pas de bavardage
 └── prompts/
     └── create-endpoint.prompt.md ← Prompt réutilisable, pas de reformulation
 ```
@@ -1007,9 +1007,9 @@ Quand NE PAS ?       Apprentissage, onboarding, exploration d'architecture
 ├── .github/
 │   ├── copilot-instructions.md        ← CONTEXTE permanent
 │   ├── agents/
-│   │   ├── code-reviewer.md           ← AGENT review
-│   │   ├── api-scaffolder.md          ← AGENT scaffolding
-│   │   └── review-workflow.md         ← AGENT orchestrateur (handoffs)
+│   │   ├── code-reviewer.agent.md           ← AGENT review
+│   │   ├── api-scaffolder.agent.md          ← AGENT scaffolding
+│   │   └── review-workflow.agent.md         ← AGENT orchestrateur (handoffs)
 │   ├── skills/
 │   │   ├── api-testing/
 │   │   │   ├── SKILL.md              ← SKILL testing
