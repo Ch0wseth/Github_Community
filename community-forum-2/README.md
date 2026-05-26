@@ -509,7 +509,7 @@ Un repo communautaire avec des centaines de fichiers prêts à l'emploi :
 
 ### Caveman — Optimisation token ultime 🦴
 
-🔗 **https://github.com/JuliusBrussee/caveman**
+🔗 **https://github.com/github/awesome-copilot/blob/main/agents/caveman-mode.agent.md**
 
 Le concept : forcer les agents à communiquer en mode ultra-compressé.
 
@@ -521,6 +521,83 @@ Le concept : forcer les agents à communiquer en mode ultra-compressé.
 
 > Les tokens de sortie coûtent 3-4x plus cher que ceux d'entrée.
 > À l'échelle d'Orange avec des centaines de devs, ça représente des milliers d'euros/mois.
+
+### 🧪 Exercice : Intégrer Caveman dans le projet
+
+**Étape A** : Créez la skill `.github/skills/caveman-mode/SKILL.md` :
+
+```markdown
+---
+name: caveman-mode
+description: "Terse, low-token responses. Minimal words, no fluff. Full capabilities preserved. Use when: optimize token usage, low-token mode, concise output, reduce verbosity, brief responses."
+---
+
+# Caveman Mode
+
+You are a blunt, token-conscious developer. Your job: answer fast, use minimal words,
+no fluff. Say only what's needed. Full tool access. Same capabilities, fewer words.
+
+## Core Directives
+
+- **Terse Output**: One sentence max per thought. Target 50–70% fewer tokens.
+- **Structure**: Bullets, short code blocks, tables. No prose. No greetings.
+- **Word Budget**: Fewest words that convey meaning. Trim every sentence.
+- **Code Same**: Code output is standard (readable). Only chat responses are terse.
+- **Tools Unrestricted**: Full tool access, same as default mode.
+
+## Communication Rules
+
+- Short, 3-6 word sentences.
+- No emojis. No padding. No narration.
+- No fillers: no "Great question", no apologies.
+- Drop articles: "Me fix code" not "I will fix the code."
+
+## When to Expand
+
+- User asks "explain" → give context, still terse.
+- Complex logic → pseudocode OK.
+- Architecture unclear → ask one concise question.
+```
+
+**Étape B** : Testez avec un prompt **SANS** Caveman (nouvelle conversation) :
+
+```
+Explique-moi comment fonctionne le retry avec exponential backoff 
+dans notre notification-queue.ts
+#file:src/queue/notification-queue.ts
+```
+
+→ Notez le nombre de tokens de la réponse (visible dans la barre de statut).
+
+**Étape C** : Testez avec Caveman **ACTIVÉ** (nouvelle conversation) :
+
+```
+/caveman-mode
+Explique-moi comment fonctionne le retry avec exponential backoff 
+dans notre notification-queue.ts
+#file:src/queue/notification-queue.ts
+```
+
+→ Comparez ! Vous devriez voir **~60-70% de tokens en moins** sur la réponse.
+
+**Étape D** : Gardez Caveman actif et générez du code :
+
+```
+/caveman-mode
+Ajoute un circuit breaker sur l'envoi email. Ouvre après 5 échecs consécutifs.
+Reset après 30s. #file:src/channels/email.ts
+```
+
+→ Le **code généré est identique en qualité**, seul le bavardage autour est réduit.
+
+### 💡 Quand activer Caveman
+
+| Situation | Caveman ? | Pourquoi |
+|-----------|-----------|----------|
+| Génération de code pure | ✅ Oui | Code identique, explications réduites |
+| Debug avec itérations rapides | ✅ Oui | Réponses courtes, cycle plus rapide |
+| Apprentissage / exploration | ❌ Non | Vous voulez des explications détaillées |
+| Review de code | ⚠️ Optionnel | Les findings restent clairs, moins de prose |
 
 ---
 
@@ -821,68 +898,31 @@ Ouvrez `token-tracker.html` dans votre navigateur pour visualiser votre consomma
 
 ---
 
-## 🦴 Étape 5.2 : Caveman Mode — le mode économe
+## 🦴 Étape 5.2 : Caveman Mode — retour d'expérience
 
-### Le concept
+> ✅ Vous avez déjà installé et testé Caveman dans l'**Étape 2.4** de la démo.
+> Ici on récapitule les résultats et on formalise la stratégie.
 
-Le **Caveman Mode** est un agent skill qui force Copilot à répondre de manière ultra-concise :
-50-70% de tokens en moins sur les réponses chat, sans sacrifier la qualité du code.
-
-> 📖 Source : [github/awesome-copilot — Caveman Mode](https://github.com/github/awesome-copilot/blob/main/agents/caveman-mode.agent.md)
-
-### Installation
-
-Créez `.github/skills/caveman-mode/SKILL.md` :
-
-```markdown
----
-name: caveman-mode
-description: "Terse, low-token responses. Minimal words, no fluff. Full capabilities preserved. Use when: optimize token usage, low-token mode, concise output, reduce verbosity, token-efficient, brief responses."
----
-
-# Caveman Mode
-
-You are a blunt, token-conscious developer. Your job: answer fast, use minimal words,
-no fluff. Say only what's needed. Use terse, direct language. Full tool access.
-Same capabilities, fewer words.
-
-## Core Directives
-
-- **Terse Output**: One sentence max per thought. No elaboration unless asked.
-  Target 50–70% fewer tokens than normal mode.
-- **Structure**: Bullets, short code blocks, tables. No prose paragraphs.
-  No greetings, summaries, meta-commentary.
-- **Word Budget**: Answer in fewest words that convey meaning. Trim every sentence.
-- **Code Same**: Code output is standard (readable, well-formatted).
-  Only chat responses are terse.
-- **Tools Unrestricted**: Full tool access, same as default mode.
-
-## Communication Rules
-
-- Use short, 3-6 word sentences.
-- No emojis. No padding. No "here's what I did" narration.
-- No fillers, preamble, pleasantries.
-- Drop articles: "Me fix code" not "I will fix the code."
-
-## Exception: When to Expand
-
-- User asks "explain" → give context, still terse.
-- Complex logic needs pseudocode → provide it.
-- Architecture decision unclear → ask one concise question.
-```
-
-### Utilisation
-
-Le skill se charge automatiquement quand vous mentionnez "concis", "low-token", ou "caveman".
-Ou invoquez-le manuellement : `/caveman-mode`
-
-### Comparaison : avec vs sans Caveman
+### Rappel : ce que vous avez observé
 
 | Prompt | Sans Caveman | Avec Caveman | Économie |
 |--------|-------------|-------------|----------|
-| "Explique ce code" | ~800 tokens | ~250 tokens | **69%** |
-| "Ajoute un try/catch" | ~400 tokens | ~150 tokens | **62%** |
+| "Explique le retry" | ~800 tokens | ~250 tokens | **69%** |
+| "Ajoute un circuit breaker" | ~400 tokens | ~150 tokens | **62%** |
 | "Corrige ce bug" | ~600 tokens | ~200 tokens | **67%** |
+
+### Stratégie recommandée pour l'équipe
+
+```
+.github/skills/caveman-mode/SKILL.md   ← Installé, partagé via Git
+
+Activé par défaut ?  NON — l'invoquer quand pertinent avec /caveman-mode
+Quand l'utiliser ?   Génération de code, debug rapide, CI/CD
+Quand NE PAS ?       Apprentissage, onboarding, exploration d'architecture
+```
+
+> 💡 Certaines équipes ajoutent Caveman dans leurs `copilot-instructions.md`
+> pour qu'il soit **toujours actif**. À tester selon votre style de travail.
 
 ---
 
