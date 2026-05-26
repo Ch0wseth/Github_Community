@@ -689,29 +689,274 @@ Puis dans le chat, demandez :
 
 ---
 
-# PARTIE 4 : Récap & Pour aller plus loin
+# PARTIE 4 : Skills — Capacités spécialisées réutilisables
+
+> Les **Agent Skills** sont un standard ouvert ([agentskills.io](https://agentskills.io)) qui fonctionne
+> dans VS Code, Copilot CLI, et le cloud agent. Contrairement aux instructions custom qui définissent
+> des conventions de code, les skills enseignent des **capacités spécialisées** avec scripts, exemples et ressources.
+>
+> 📖 Réf : [Agent Skills — VS Code Docs](https://code.visualstudio.com/docs/copilot/customization/agent-skills)
 
 ---
 
-## 📊 Consommation de tokens
+## 📦 Étape 4.1 : Créer une skill projet
 
-### Estimation pour cette démo
+### Où les mettre
 
-| Étape | Tokens estimés |
-|-------|---------------|
-| Bootstrap | ~3 300 |
-| Retry + DLQ | ~2 400 |
-| Tests | ~2 600 |
-| Fix erreurs | ~1 300 |
-| Instructions + Agents | ~1 800 |
-| **TOTAL** | **~11 400** |
+| Type | Emplacement |
+|------|------------|
+| Projet (partagé via repo) | `.github/skills/`, `.claude/skills/`, `.agents/skills/` |
+| Personnel (votre machine) | `~/.copilot/skills/`, `~/.claude/skills/` |
 
-### Avec vs sans bonnes pratiques
+### Structure d'une skill
 
-| Approche | Tokens | Économie |
-|----------|--------|----------|
+```
+.github/skills/
+└── api-testing/
+    ├── SKILL.md              ← Instructions + metadata
+    ├── test-template.ts      ← Template réutilisable
+    └── examples/
+        └── notification.test.ts
+```
+
+### Exercice : Skill de testing d'API
+
+Créez `.github/skills/api-testing/SKILL.md` :
+
+```markdown
+---
+name: api-testing
+description: Guide pour tester les endpoints REST avec supertest. Utiliser quand on demande de créer ou lancer des tests d'API.
+---
+
+# Testing d'API avec Supertest
+
+## Quand utiliser cette skill
+- Création de tests pour des endpoints REST
+- Validation de codes HTTP, headers, body
+
+## Procédure
+1. Importer supertest et l'app Express
+2. Créer un describe par endpoint
+3. Tester les cas nominaux ET les erreurs (400, 404, 500)
+4. Mocker les dépendances externes (queue, DB)
+
+## Template
+Voir [test-template.ts](./test-template.ts) pour le squelette de base.
+
+## Conventions
+- Nommage : `{feature}.test.ts`
+- Un fichier par route
+- Assertions avec expect de Jest
+```
+
+### Utilisation
+
+Les skills se chargent **automatiquement** quand Copilot détecte qu'elles sont pertinentes.
+Vous pouvez aussi les invoquer explicitement avec `/api-testing` dans le chat.
+
+> 💡 **Astuce** : Tapez `/skills` dans le chat pour voir et gérer vos skills.
+> Ou utilisez `/create-skill` pour en générer une via l'IA.
+
+---
+
+## 🔀 Étape 4.2 : Skill en contexte forké (subagent)
+
+Pour les skills lourdes qui polluent le contexte principal, utilisez `context: fork` :
+
+```markdown
+---
+name: security-audit
+description: Audit de sécurité complet d'un endpoint. Vérifie injections, auth, rate limiting.
+context: fork
+---
+
+# Security Audit
+
+Exécute un audit complet. Seul le rapport final remonte au contexte principal.
+Le détail de l'analyse reste isolé dans le subagent.
+```
+
+→ Le contexte principal reste léger, seul le résultat final est retourné.
+
+---
+
+## 💡 Étape 4.3 : Skills vs Agents vs Instructions — quand utiliser quoi
+
+| Besoin | Outil | Exemple |
+|--------|-------|---------|
+| Conventions de code permanentes | `copilot-instructions.md` | "Utilise TypeScript strict, pas de any" |
+| Workflow multi-étapes avec handoffs | Custom Agent (`.github/agents/`) | Review → Security → Fix |
+| Capacité spécialisée réutilisable | Skill (`.github/skills/`) | Template de test, audit sécu |
+| Prompt ponctuel paramétrable | Prompt file (`.github/prompts/`) | Créer un endpoint avec variables |
+
+---
+
+# PARTIE 5 : Optimisation des tokens — Tips & Tricks
+
+> Chaque interaction avec Copilot consomme des tokens.
+> Voici les techniques pour **réduire de 50-70%** votre consommation sans sacrifier la qualité.
+
+---
+
+## 📊 Étape 5.1 : Suivre sa consommation en temps réel
+
+### Le Token Tracker (inclus dans ce repo)
+
+Ouvrez `token-tracker.html` dans votre navigateur pour visualiser votre consommation pendant la démo.
+
+### Dans VS Code
+
+1. Ouvrez la palette de commandes : `Ctrl+Shift+P`
+2. Tapez : **"Copilot: Show Token Usage"**
+3. Vous voyez les tokens input/output par conversation
+
+### Indicateurs à surveiller
+
+| Signal d'alerte | Cause probable | Action |
+|----------------|---------------|--------|
+| > 5000 tokens par prompt | Trop de contexte chargé | Réduire les `#file:`, nouvelle conversation |
+| Réponses de + de 2000 tokens | Copilot est trop verbeux | Ajouter "Sois concis" ou activer Caveman |
+| Conversation > 20 000 tokens | Contexte saturé | Reset : nouvelle conversation |
+
+---
+
+## 🦴 Étape 5.2 : Caveman Mode — le mode économe
+
+### Le concept
+
+Le **Caveman Mode** est un agent skill qui force Copilot à répondre de manière ultra-concise :
+50-70% de tokens en moins sur les réponses chat, sans sacrifier la qualité du code.
+
+> 📖 Source : [github/awesome-copilot — Caveman Mode](https://github.com/github/awesome-copilot/blob/main/agents/caveman-mode.agent.md)
+
+### Installation
+
+Créez `.github/skills/caveman-mode/SKILL.md` :
+
+```markdown
+---
+name: caveman-mode
+description: "Terse, low-token responses. Minimal words, no fluff. Full capabilities preserved. Use when: optimize token usage, low-token mode, concise output, reduce verbosity, token-efficient, brief responses."
+---
+
+# Caveman Mode
+
+You are a blunt, token-conscious developer. Your job: answer fast, use minimal words,
+no fluff. Say only what's needed. Use terse, direct language. Full tool access.
+Same capabilities, fewer words.
+
+## Core Directives
+
+- **Terse Output**: One sentence max per thought. No elaboration unless asked.
+  Target 50–70% fewer tokens than normal mode.
+- **Structure**: Bullets, short code blocks, tables. No prose paragraphs.
+  No greetings, summaries, meta-commentary.
+- **Word Budget**: Answer in fewest words that convey meaning. Trim every sentence.
+- **Code Same**: Code output is standard (readable, well-formatted).
+  Only chat responses are terse.
+- **Tools Unrestricted**: Full tool access, same as default mode.
+
+## Communication Rules
+
+- Use short, 3-6 word sentences.
+- No emojis. No padding. No "here's what I did" narration.
+- No fillers, preamble, pleasantries.
+- Drop articles: "Me fix code" not "I will fix the code."
+
+## Exception: When to Expand
+
+- User asks "explain" → give context, still terse.
+- Complex logic needs pseudocode → provide it.
+- Architecture decision unclear → ask one concise question.
+```
+
+### Utilisation
+
+Le skill se charge automatiquement quand vous mentionnez "concis", "low-token", ou "caveman".
+Ou invoquez-le manuellement : `/caveman-mode`
+
+### Comparaison : avec vs sans Caveman
+
+| Prompt | Sans Caveman | Avec Caveman | Économie |
+|--------|-------------|-------------|----------|
+| "Explique ce code" | ~800 tokens | ~250 tokens | **69%** |
+| "Ajoute un try/catch" | ~400 tokens | ~150 tokens | **62%** |
+| "Corrige ce bug" | ~600 tokens | ~200 tokens | **67%** |
+
+---
+
+## ⚡ Étape 5.3 : Tips & Tricks pour économiser les tokens
+
+### 🎯 Au niveau du prompt
+
+| Technique | Avant (cher) | Après (économe) |
+|-----------|-------------|----------------|
+| Être spécifique | "Peux-tu m'aider à créer un truc pour les notifications ?" | "POST /notifications, body: {to, channel, message}, retourne 201 + ID" |
+| Limiter le contexte | `#file:` sur 10 fichiers | `#file:` sur 1-2 fichiers pertinents |
+| Donner le format attendu | (rien) | "Réponds uniquement avec le code, pas d'explication" |
+| Découper | 1 prompt géant de 500 mots | 3 prompts ciblés de 50 mots |
+
+### 🔄 Au niveau de la conversation
+
+| Technique | Impact |
+|-----------|--------|
+| **Nouvelle conversation** quand on change de sujet | Évite d'accumuler du contexte inutile |
+| **`copilot-instructions.md`** pour le contexte permanent | Pas besoin de répéter à chaque prompt |
+| **Skills** pour les workflows récurrents | Instructions chargées une fois, réutilisées |
+| **Subagents avec fork** pour les analyses lourdes | Contexte isolé, seul le résultat remonte |
+
+### 🧠 Au niveau du modèle
+
+| Modèle | Usage optimal | Coût relatif |
+|--------|--------------|-------------|
+| **Haiku / GPT-4o mini** | Questions simples, explications | 💰 |
+| **Sonnet** | Génération de code, itération | 💰💰 |
+| **Opus** | Architecture, review complexe | 💰💰💰 |
+
+> 💡 **Règle d'or** : utilisez le modèle le moins cher capable de faire la tâche.
+> Pas besoin d'Opus pour ajouter un try/catch.
+
+### 📐 Au niveau du projet
+
+```
+.github/
+├── copilot-instructions.md     ← Conventions = pas besoin de les répéter
+├── skills/
+│   └── caveman-mode/SKILL.md   ← Réponses concises automatiques
+├── agents/
+│   └── code-reviewer.md        ← Review ciblée, pas de bavardage
+└── prompts/
+    └── create-endpoint.prompt.md ← Prompt réutilisable, pas de reformulation
+```
+
+---
+
+## 📊 Étape 5.4 : Estimation de tokens pour cette démo
+
+### Par étape
+
+| Étape | Sans optimisation | Avec optimisation | Économie |
+|-------|------------------|-------------------|----------|
+| Bootstrap projet | ~6 000 | ~3 300 | 45% |
+| Retry + DLQ | ~5 000 | ~2 400 | 52% |
+| Tests | ~5 500 | ~2 600 | 53% |
+| Fix erreurs | ~3 000 | ~1 300 | 57% |
+| Instructions + Skills + Agents | ~4 000 | ~1 800 | 55% |
+| Multi-agent (Partie 3) | ~8 500 | ~3 500 | 59% |
+| **TOTAL** | **~32 000** | **~14 900** | **~53%** |
+
+### Avec Caveman Mode activé en plus
+
+| Approche | Tokens | Économie vs naïf |
+|----------|--------|-------------------|
 | ❌ Prompts vagues, pas d'instructions, pas de reset | ~32 000 | — |
-| ✅ Instructions + prompts précis + contexte frais | ~11 400 | **~64%** |
+| ✅ Instructions + prompts précis + contexte frais | ~14 900 | **~53%** |
+| ✅✅ + Caveman Mode sur les réponses chat | ~11 000 | **~66%** |
+
+---
+
+# PARTIE 6 : Récap & Pour aller plus loin
 
 ---
 
@@ -723,10 +968,19 @@ Puis dans le chat, demandez :
 │   ├── copilot-instructions.md        ← CONTEXTE permanent
 │   ├── agents/
 │   │   ├── code-reviewer.md           ← AGENT review
-│   │   └── api-scaffolder.md          ← AGENT scaffolding
+│   │   ├── api-scaffolder.md          ← AGENT scaffolding
+│   │   └── review-workflow.md         ← AGENT orchestrateur (handoffs)
+│   ├── skills/
+│   │   ├── api-testing/
+│   │   │   ├── SKILL.md              ← SKILL testing
+│   │   │   └── test-template.ts
+│   │   ├── caveman-mode/
+│   │   │   └── SKILL.md              ← SKILL optimisation tokens
+│   │   └── security-audit/
+│   │       └── SKILL.md              ← SKILL audit (forked context)
 │   └── prompts/
-│       ├── create-endpoint.prompt.md  ← SKILL endpoint
-│       └── add-retry.prompt.md        ← SKILL retry
+│       ├── create-endpoint.prompt.md  ← PROMPT endpoint
+│       └── add-retry.prompt.md        ← PROMPT retry
 ├── src/
 │   ├── index.ts
 │   ├── routes/notifications.ts
@@ -752,13 +1006,16 @@ Puis dans le chat, demandez :
 2. **Ajouter des métriques Prometheus** — Endpoint `/metrics`
 3. **Dockeriser le service** — Dockerfile + docker-compose
 4. **Rate limiter** — Max 10 notifications/minute par destinataire
-5. **Tester Caveman** — Ajouter une instruction de concision et comparer les tokens
+5. **Créer une skill "database-migration"** — Workflow de migration SQL réutilisable
+6. **Comparer les modèles** — Même prompt sur Haiku vs Sonnet vs Opus, mesurer tokens
 
 ### Ressources
 
 - 📖 [Documentation Copilot](https://docs.github.com/en/copilot)
 - 🌟 [Awesome Copilot](https://aka.ms/awesome-github-copilot)
-- 🦴 [Caveman (token compression)](https://github.com/JuliusBrussee/caveman)
+- 🦴 [Caveman Mode (awesome-copilot)](https://github.com/github/awesome-copilot/blob/main/agents/caveman-mode.agent.md)
+- 🛠️ [Agent Skills — Standard ouvert](https://agentskills.io)
+- 📊 [Multi-Agent Development — VS Code Blog](https://code.visualstudio.com/blogs/2026/02/05/multi-agent-development)
 - 💬 Channel Teams de la communauté (lien interne)
 
 ---
@@ -772,7 +1029,9 @@ Puis dans le chat, demandez :
 | Tests échouent | Dites à Copilot : "Voici l'erreur : [erreur]. Corrige." |
 | Serveur ne démarre pas | Vérifiez que le port 3000 est libre |
 | curl ne marche pas (Windows) | Utilisez `Invoke-RestMethod` en PowerShell |
-| `gh copilot` non trouvé | `gh extension install github/gh-copilot` |
+| Skill pas détectée | Vérifiez le nom du dossier = champ `name` dans SKILL.md |
+| Tokens explosent | Nouvelle conversation + vérifier les `#file:` inutiles |
+| Caveman pas actif | Invoquer manuellement `/caveman-mode` |
 
 ---
 
